@@ -1,0 +1,3 @@
+load("/Users/mikekowalski/Desktop/UCSC/Research/Data/Kenya Playback Pilot/JAGS Code/MFP_DetRate_6_Model.rda")
+load("/Users/mikekowalski/Desktop/Repositories/JAGS Code/MFP_DetRate_Model6_TrophicGroupsP-G5.rda")
+load("/Users/mikekowalski/Desktop/Repositories/JAGS Code/species_det_array_24x10x19.rds")
