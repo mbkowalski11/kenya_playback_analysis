@@ -1038,27 +1038,23 @@ mrc_ele_human <- mrc_ele_det %>%
   filter(treatment == "human")
 
 mrc_ele_hab_human <- glmmTMB(
-  detections ~ week_id + grid_id,
+  detections ~ week_id + (1 | grid_id),
   family = nbinom2,
   data = mrc_ele_human
 )
 
 summary(mrc_ele_hab_human)
-# Family: nbinom2  ( log )
-# Formula:          detections ~ week_id + grid_id
-# Data: mrc_ele_human
+# Conditional model:
+# Groups  Name        Variance  Std.Dev. 
+# grid_id (Intercept) 1.596e-09 3.995e-05
+# Number of obs: 20, groups:  grid_id, 2
 # 
-# AIC       BIC    logLik -2*log(L)  df.resid 
-# 96       100       -44        88        16 
-# 
-# 
-# Dispersion parameter for nbinom2 family (): 0.243 
+# Dispersion parameter for nbinom2 family (): 0.241 
 # 
 # Conditional model:
 # Estimate Std. Error z value Pr(>|z|)
-# (Intercept)  1.81690    2.38413   0.762    0.446
-# week_id     -0.03748    0.31730  -0.118    0.906
-# grid_idS2   -0.51380    1.44103  -0.357    0.721
+# (Intercept)  1.09790    1.24577   0.881    0.378
+# week_id      0.04905    0.20924   0.234    0.815
 
 agc_hab <- read.csv("elecon2.csv")
 
@@ -1071,8 +1067,10 @@ agc_hab <- agc_hab %>% group_by(Farm) %>%
 
 agc_hab <- agc_hab %>% mutate(ele_present_bin = as.integer(Ele.present == "Yes"))
 
-m_hab_pres <- glmmTMB(ele_present_bin ~ exposure_night + Treatment + (1 | Farm),
-  family = binomial(link = "logit"), data = agc_hab)
+agc_hab <- agc_hab %>% filter(Treatment == "Humans")
+
+m_hab_pres <- glmmTMB(ele_present_bin ~ exposure_night + (1 | Farm),
+                      family = binomial(link = "logit"), data = agc_hab)
 
 summary(m_hab_pres)
 # Conditional model:
@@ -1080,6 +1078,16 @@ summary(m_hab_pres)
 # (Intercept)     -1.455216   0.552893  -2.632  0.00849 ** 
 # exposure_night   0.008584   0.011725   0.732  0.46410    
 # TreatmentHumans -1.697449   0.385963  -4.398 1.09e-05 ***
+
+# Conditional model:
+# Groups Name        Variance  Std.Dev. 
+# Farm   (Intercept) 1.066e-08 0.0001033
+# Number of obs: 553, groups:  Farm, 19
+# 
+# Conditional model:
+# Estimate Std. Error z value Pr(>|z|)    
+# (Intercept)    -2.32169    0.33834  -6.862 6.79e-12 ***
+# exposure_night -0.03090    0.02178  -1.419    0.156  
 
 agc_damage_area <- agc_hab %>%
   mutate(Area_m2 = as.numeric(Area.m2.)) %>% filter(Area_m2 > 0)
@@ -1107,6 +1115,6 @@ summary(m_hab_damage_area_human)
 # Conditional model:
 # Estimate Std. Error z value Pr(>|z|)    
 # (Intercept)     4.91710    0.33335   14.75   <2e-16 ***
-# exposure_night -0.02639    0.02563   -1.03    0.303    
+# exposure_night -0.02639    0.02563   -1.03    0.303 
 
 
