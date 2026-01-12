@@ -120,79 +120,8 @@ t.test(x = meggshuman$Consumed,
        var.equal = TRUE,
        conf.level = 0.95)
 
-#eles
-eles <- read.csv("~/Desktop/UCSC/Research/Data/Kenya Playback Pilot/eleact.csv")
-head(eles)
-ggplot(eles, aes(x=Detections, y=Treatment)) + 
-  geom_violin() + geom_jitter()
-leveneTest(Detections ~ Treatment, eles) #pvalue above .05 so we do not have enough evidence to reject the null of equal variances (non-normal)
-qqPlot(eles$Detections)
-eleshuman <- eles %>% filter(Treatment=="human")
-elescontrol <- eles %>% filter(Treatment=="control")
-wilcox.test(x = eleshuman$Detections, y = elescontrol$Detections, paired = TRUE, alternative = "less")
-t.test(x = eleshuman$Detections, 
-       y = elescontrol$Detections,
-       alternative = "less",
-       mu = 0, 
-       paired = TRUE,   
-       var.equal = TRUE,
-       conf.level = 0.95)
-eleshuman
-elescontrol
-#Remove Week 5 for Lion Party
-eles9 <- eles %>% filter(!Week==5)
-eles9human <- eleshuman %>% filter(!Week==5)
-eles9control <- elescontrol %>% filter(!Week==5)
-
-ggplot(eles9, aes(x=Detections, y=Treatment)) + 
-  geom_violin() + geom_jitter()
-leveneTest(Detections ~ Treatment, eles9) #pvalue above .05 so we do not have enough evidence to reject the null of equal variances (non-normal)
-qqPlot(eles$Detections)
-wilcox.test(x = eles9human$Detections, y = eles9control$Detections, paired = TRUE, alternative = "less")
-t.test(x = eles9human$Detections, 
-       y = eles9control$Detections,
-       alternative = "less",
-       mu = 0, 
-       paired = TRUE,   
-       var.equal = TRUE,
-       conf.level = 0.95)
-
-sum(eles9human$Detections)
-sum(eles9control$Detections)
-
-ggplot(eles9, aes(x=Detections, y=Treatment, fill = Treatment)) + 
-  geom_jitter(width = .2, height = .2, aes(fill=Treatment), size = 3, shape = 21, alpha = 0.4, show.legend = FALSE) +
-  geom_boxplot(width = 0.5, alpha=.6, outliers = FALSE, show.legend = FALSE) +
-  scale_fill_manual(values = c("gold", "indianred3")) + 
-  scale_y_discrete(labels = c("human" = "Human", "control" = "Control")) +
-  labs(x = "Detections (>30 min apart)") +
-  theme_bw(base_size=35)
-
-#camera numbers for space use
-leveneTest(Camera ~ Treatment, eles9) #pvalue above .05 so we do not have enough evidence to reject the null of equal variances (non-normal)
-qqPlot(eles$Camera)
-wilcox.test(x = eles9human$Camera, y = eles9control$Camera, paired = TRUE, alternative = "less")
-t.test(x = eles9human$Camera, 
-       y = eles9control$Camera,
-       alternative = "less",
-       mu = 0, 
-       paired = TRUE,   
-       var.equal = FALSE,
-       conf.level = 0.95)
-
-sum(eles9human$Camera)
-sum(eles9control$Camera)
-
-ggplot(eles9, aes(x=Camera, y=Treatment, fill = Treatment)) + 
-  geom_jitter(width = .2, height = .2, aes(fill=Treatment), size = 3, shape = 21, alpha = 0.4, show.legend = FALSE) +
-  geom_boxplot(width = 0.5, alpha=.6, outliers = FALSE, show.legend = FALSE) +
-  scale_fill_manual(values = c("gold", "indianred3")) + 
-  scale_y_discrete(labels = c("human" = "Human", "control" = "Control")) +
-  labs(x = "Unique Cameras Per Week") +
-  theme_bw(base_size=35)
-
-#tree damage
-trees <- read.csv("~/Desktop/UCSC/Research/Data/Kenya Playback Pilot/eledamage2.csv")
+#ele tree damage
+trees <- read.csv("eledamage2.csv")
 head(trees)
 str(trees)
 as.factor(trees$damage)
@@ -361,9 +290,168 @@ bigdamage.ttest <- function(damagetype) {
 }
 bigdamage.ttest(damagetype = "lb")
 
+####Browsing frequemcy ANOVAs
+# --- TREES: counts per treatment x grid x transect, with zeros filled ---
+trees.gf <- trees %>%
+  mutate(
+    treatment = factor(treatment),
+    grid      = factor(grid),
+    transect  = factor(transect)
+  ) %>%
+  count(treatment, grid, transect, name = "count") %>%
+  complete(treatment, grid, transect, fill = list(count = 0))
+
+# TREES (start with NB; it usually behaves better than Poisson with overdispersion)
+m_trees <- glmmTMB(
+  count ~ treatment * grid + (1 | grid/transect),
+  family = nbinom2(),
+  data = trees.gf
+)
+summary(m_trees)
+emmeans(m_trees, pairwise ~ treatment | grid, type = "response")
+# Family: nbinom2  ( log )
+# Formula:          count ~ treatment * grid + (1 | grid/transect)
+# Data: trees.gf
+# AIC       BIC    logLik -2*log(L)  df.resid 
+# 126.5     134.7     -56.3     112.5        17 
+# Random effects:
+#   Conditional model:
+#   Groups        Name        Variance  Std.Dev.
+# transect:grid (Intercept) 1.159e+01 3.404845
+# grid          (Intercept) 1.824e-08 0.000135
+# Number of obs: 24, groups:  transect:grid, 12; grid, 2
+# 
+# Dispersion parameter for nbinom2 family (): 8.39 
+# 
+# Conditional model:
+# Estimate Std. Error z value Pr(>|z|)    
+# (Intercept)            -0.1535     1.8444  -0.083 0.933679    
+# treatmenthuman         -1.4029     0.4033  -3.479 0.000504 ***
+# gridS2                  0.1936     2.2760   0.085 0.932201    
+# treatmenthuman:gridS2  -0.2900     0.5780  -0.502 0.615903    
+# ---
+#   Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+# $emmeans
+# grid = N2:
+# treatment response    SE  df asymp.LCL asymp.UCL
+# control      0.858 1.580 Inf   0.02309     31.86
+# human        0.211 0.393 Inf   0.00544      8.17
+# 
+# grid = S2:
+# treatment response    SE  df asymp.LCL asymp.UCL
+# control      1.041 1.910 Inf   0.02851     38.01
+# human        0.192 0.357 Inf   0.00495      7.41
+# 
+# Confidence level used: 0.95 
+# Intervals are back-transformed from the log scale 
+# 
+# $contrasts
+# grid = N2:
+#   contrast        ratio   SE  df null z.ratio p.value
+# control / human  4.07 1.64 Inf    1   3.479  0.0005
+# 
+# grid = S2:
+# contrast        ratio   SE  df null z.ratio p.value
+# control / human  5.44 2.25 Inf    1   4.087  <.0001
+# 
+# Tests are performed on the log scale 
+# exp(-1.4029) ≈ 0.246 or 75% reduction in browsing frequency
 
 
+# --- BIGTREES: same idea ---
+m_big_sev_logn_full <- glmmTMB(
+  log(percent) ~ treatment * grid + (1 | grid/transect),
+  family = gaussian(),
+  data = bigtrees
+)
+summary(m_big_sev_logn_full)
 
+emm <- emmeans(m_big_sev_logn_full, ~ treatment | grid)
+
+# One-sided test: human < control
+contrast(
+  emm,
+  method = "revpairwise",
+  adjust = "none",
+  side = "<"
+)
+
+m_big_sev_logn_full <- glmmTMB(
+  log(percent) ~ treatment,
+  family = gaussian(),
+  data = trees
+)
+summary(m_big_sev_logn_full)
+
+emm <- emmeans(m_big_sev_logn_full, ~ treatment)
+
+contrast(
+  emm,
+  method = "revpairwise",
+  adjust = "none",
+  side = "<"  
+)
+
+bigtrees_tran <- bigtrees %>%
+  group_by(grid, transect, treatment) %>%
+  summarise(
+    mean_percent = mean(percent),
+    n_trees = n(),
+    .groups = "drop"
+  )
+
+m_tran_logn <- glmmTMB(
+  log(mean_percent) ~ treatment * grid + (1 | transect),
+  family = gaussian(),
+  data = bigtrees_tran
+)
+
+summary(m_tran_logn)
+
+emm <- emmeans(m_tran_logn, ~ treatment | grid, type = "response")
+contr <- contrast(emm, method = "revpairwise",  # human / control
+  type = "response")
+
+# > summary(m_tran_logn)
+# Family: gaussian  ( identity )
+# Formula:          log(mean_percent) ~ treatment * grid + (1 | transect)
+# Data: bigtrees_tran
+# 
+# AIC       BIC    logLik -2*log(L)  df.resid 
+# 10.9      12.1       0.5      -1.1         3 
+# 
+# Random effects:
+#   
+# Conditional model:
+# Groups   Name        Variance Std.Dev.
+# transect (Intercept) 0.05265  0.2295  
+# Residual             0.01654  0.1286  
+# Number of obs: 9, groups:  transect, 6
+# 
+# Dispersion estimate for gaussian family (sigma^2): 0.0165 
+# 
+# Conditional model:
+# Estimate Std. Error z value Pr(>|z|)    
+# (Intercept)             2.5439     0.1519  16.751  < 2e-16 ***
+# treatmenthuman         -0.7421     0.1924  -3.857 0.000115 ***
+# gridS2                  0.9003     0.2148   4.192 2.77e-05 ***
+# treatmenthuman:gridS2  -0.4974     0.2298  -2.164 0.030448 *  
+# ---
+# Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+# grid = N2:
+#   contrast        ratio     SE  df null z.ratio p.value
+# human / control 0.476 0.0916 Inf    1  -3.857  0.0001
+# 
+# grid = S2:
+#   contrast        ratio     SE  df null z.ratio p.value
+# human / control 0.290 0.0365 Inf    1  -9.835  <.0001
+# 
+# Tests are performed on the log scale 
+# grid  ratio        percent_reduction in damage
+# N2    0.48         52% 
+# S2    0.29         71%
 
 ##############Plotting summaries
 # Millet plot with mean and 95% CI

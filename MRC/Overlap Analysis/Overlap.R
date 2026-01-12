@@ -240,6 +240,42 @@ fisher_daylight <- overlap2 %>%
 
 print(fisher_daylight)
 
+########Binomial Daylight Instead
+det_solar <- read.csv("detections_solar.csv")
+str(det_solar)
+ele_day <- det_solar %>%
+  filter(common_name == "African Elephant") %>%
+  mutate(
+    treatment  = factor(treatment, levels = c("control","human")),
+    daylight   = as.integer(daylight),
+    camera_num = factor(camera_num)
+  )
+
+m_ele_day <- glmmTMB(
+  daylight ~ treatment + (1 | camera_num),
+  family = binomial(),
+  data = ele_day
+)
+
+summary(m_ele_day)
+# Conditional model:
+#   Groups     Name        Variance Std.Dev.
+# camera_num (Intercept) 0.2774   0.5267  
+# Number of obs: 242, groups:  camera_num, 23
+# 
+# Conditional model:
+#   Estimate Std. Error z value Pr(>|z|)    
+# (Intercept)      0.9512     0.2214   4.296 1.74e-05 ***
+#   treatmenthuman  -1.8969     0.3275  -5.792 6.94e-09 ***
+#   ---
+#   Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+emm_ele <- emmeans(m_ele_day, ~ treatment)
+contrast(emm_ele, method = "revpairwise")
+# contrast        estimate    SE  df z.ratio p.value
+# human - control     -1.9 0.327 Inf  -5.792  <.0001
+# 
+# Results are given on the log odds ratio (not the response) scale. 
+
 ##########
 #Overlap Analysis
 overlap <- read.csv("solaroverlap.csv")
